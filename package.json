@@ -21,6 +21,7 @@
     "next": "^12.2.5",
     "nodemailer": "^6.9.1",
     "react": "^18.2.0",
+    "react-big-calendar": "^1.8.4",
     "react-date-range": "^1.4.0",
     "react-dom": "^18.2.0",
     "react-firebase-hooks": "^5.1.1",

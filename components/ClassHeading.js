@@ -17,6 +17,7 @@ import {
 	getDoc,
 	getDocs,
 	onSnapshot,
+	orderBy,
 	query,
 	where,
 } from "firebase/firestore";
@@ -29,7 +30,7 @@ import { useAuthState } from "react-firebase-hooks/auth";
 import "swiper/css";
 import "swiper/css/navigation";
 import "swiper/css/pagination";
-import { toast, ToastContainer } from "react-toastify";
+import { toast } from "react-toastify";
 
 const ClassHeading = ({
 	type,
@@ -49,7 +50,6 @@ const ClassHeading = ({
 	category,
 	data,
 }) => {
-	//console.log(location?.longitude)
 	const getLongitude = location?.longitude;
 	const getLatitude = location?.latitude;
 	const addresslink = `https://www.google.com/maps/search/?api=1&query=${getLatitude}%2C${getLongitude}`;
@@ -134,7 +134,11 @@ const ClassHeading = ({
 			// get chatrooms
 			setLoadingRooms(true);
 			const querySnapshot = await getDocs(
-				query(collection(db, "chatrooms"), where("class", "==", id))
+				query(
+					collection(db, "chatrooms"),
+					where("class", "==", id),
+					orderBy("lastMessage", "desc")
+				)
 			);
 
 			const cRooms = [];
@@ -351,7 +355,6 @@ const ClassHeading = ({
 				},
 			});
 
-		// check if chatroom exists else create one
 		try {
 			const chatRoomRef = collection(db, "chatrooms");
 			const q = query(
@@ -382,6 +385,9 @@ const ClassHeading = ({
 
 	// Handle Chat Button
 	const handleChatButton = async () => {
+		const now = Timestamp?.now();
+		const temMinutesAgo = new Date(now.toMillis() - 10 * 60 * 1000);
+
 		const studentId = user?.uid;
 		const instructorId = classCreatorData?.userUid;
 		const classId = id;
@@ -389,8 +395,9 @@ const ClassHeading = ({
 			instructor: instructorId,
 			student: studentId,
 			class: classId,
-			createdAt: Timestamp?.now?.(),
 			messages: [],
+			createdAt: Timestamp?.now?.(),
+			lastMessage: Timestamp?.fromDate?.(temMinutesAgo),
 		};
 		const goToChat = (cid, chid) =>
 			router.push({
@@ -427,6 +434,17 @@ const ClassHeading = ({
 		}
 
 		return;
+	};
+
+	// Handle Booking
+	const handleBooking = async () => {
+		const classId = id;
+		router.push({
+			pathname: "/booking",
+			query: {
+				id: classId,
+			},
+		});
 	};
 
 	return (
@@ -630,51 +648,70 @@ const ClassHeading = ({
 							)}
 						</div>
 
-						{/* chat button */}
+						{/* chat/schedule button */}
 						{!!user &&
 							(isInstructor ? (
-								<div className="flex flex-col bg-gray-100 p-4 rounded-xl border shadow-sm">
-									<h1 className="text-logo-red font-bold mb-4">
-										Chats with students
-									</h1>
+								<>
+									<button
+										onClick={(e) => handleBooking()}
+										className="active:scale-105 w-full active:duration-75 transition-all hover:scale-[1.01] ease-in-out transform py-2 bg-logo-red rounded-xl text-white font-semibold text-sm mt-4 mb-4"
+									>
+										Class Booking Schedule
+									</button>
 
-									{/* chatrooms */}
-									{!loadingRooms ? (
-										chatRooms?.length > 0 ? (
-											chatRooms?.map?.((cr) => (
-												<div
-													onClick={(e) => handleChatOpen(cr?.sid)}
-													className="flex rounded-md items-center border-t p-4 mb-1 cursor-pointer bg-gray-200 hover:opacity-80 duration-150 ease-in-out"
-												>
-													<img
-														src={cr?.profileImage ?? "/avatar.png"}
-														alt="avatar_img"
-														className="h-12 object-contain rounded-full bg-gray-100 p-1"
-													/>
-													<div className="ml-3">
-														<h1 className="font-medium font text-gray-700">
-															{cr?.studentName ?? "name not found"}
-														</h1>
-														<h1 className="text-xs text-gray-400">Student</h1>
+									<div className="flex flex-col bg-gray-100 p-4 rounded-xl border shadow-sm">
+										<h1 className="text-logo-red font-bold mb-4">
+											Chats with students
+										</h1>
+
+										{/* chatrooms */}
+										{!loadingRooms ? (
+											chatRooms?.length > 0 ? (
+												chatRooms?.map?.((cr, index) => (
+													<div
+														key={`${index}${cr?.sid}`}
+														onClick={(e) => handleChatOpen(cr?.sid)}
+														className="flex rounded-md items-center border-t p-4 mb-1 cursor-pointer bg-gray-200 hover:opacity-80 duration-150 ease-in-out"
+													>
+														<img
+															src={cr?.profileImage ?? "/avatar.png"}
+															alt="avatar_img"
+															className="h-12 object-contain rounded-full bg-gray-100 p-1"
+														/>
+														<div className="ml-3">
+															<h1 className="font-medium font text-gray-700">
+																{cr?.studentName ?? "name not found"}
+															</h1>
+															<h1 className="text-xs text-gray-400">Student</h1>
+														</div>
 													</div>
-												</div>
-											))
+												))
+											) : (
+												<h1 className="mx-auto py-6 px-2 text-gray-700 font-bold opacity-60">
+													Chats Empty
+												</h1>
+											)
 										) : (
-											<h1 className="mx-auto py-6 px-2 text-gray-700 font-bold opacity-60">
-												Chats Empty
-											</h1>
-										)
-									) : (
-										<div className="border-t border-logo-red h-6 w-6 mx-auto my-4 rounded-full animate-spin"></div>
-									)}
-								</div>
+											<div className="border-t border-logo-red h-6 w-6 mx-auto my-4 rounded-full animate-spin"></div>
+										)}
+									</div>
+								</>
 							) : (
-								<button
-									onClick={(e) => handleChatButton(e)}
-									className="active:scale-105 w-[200px] active:duration-75 transition-all hover:scale-[1.01]  ease-in-out transform py-2 bg-logo-red rounded-xl text-white font-semibold text-sm mt-4"
-								>
-									Chat with Instructor
-								</button>
+								<div>
+									<button
+										onClick={(e) => handleChatButton(e)}
+										className="active:scale-105 w-[200px] active:duration-75 transition-all hover:scale-[1.01] ease-in-out transform py-2 bg-logo-red rounded-xl text-white font-semibold text-sm mt-4"
+									>
+										Chat with Instructor
+									</button>
+
+									<button
+										onClick={(e) => handleBooking()}
+										className="active:scale-105 w-[200px] active:duration-75 transition-all hover:scale-[1.01] ease-in-out transform py-2 bg-logo-red rounded-xl text-white font-semibold text-sm mt-4"
+									>
+										Booking Schedule
+									</button>
+								</div>
 							))}
 
 						{/* <div className="icon m-3 flex gap-2">
@@ -1085,18 +1122,6 @@ const ClassHeading = ({
 					</p>
 				</div>
 			)}
-			<ToastContainer
-				position="top-center"
-				autoClose={2000}
-				hideProgressBar={false}
-				newestOnTop
-				closeOnClick
-				rtl={false}
-				pauseOnFocusLoss
-				draggable
-				pauseOnHover
-				theme="light"
-			/>
 		</div>
 	);
 };

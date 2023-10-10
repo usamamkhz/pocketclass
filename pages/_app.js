@@ -1,10 +1,12 @@
 import "../styles/globals.css";
 import "../styles/classHeading.css";
+import "../styles/calendar.css";
 import "../styles/stickyFooter.css";
 import "react-toastify/dist/ReactToastify.css";
 import ProgressBar from "@badrap/bar-of-progress";
 import Router from "next/router";
 import Script from "next/script";
+import { ToastContainer } from "react-toastify";
 
 const progress = new ProgressBar({
 	size: 4,
@@ -34,6 +36,18 @@ function MyApp({ Component, pageProps }) {
         `}
 			</Script>
 			<Component {...pageProps} />
+			<ToastContainer
+				position="top-center"
+				autoClose={2000}
+				hideProgressBar={false}
+				newestOnTop
+				closeOnClick
+				rtl={false}
+				pauseOnFocusLoss
+				draggable
+				pauseOnHover
+				theme="light"
+			/>
 		</>
 	);
 }
