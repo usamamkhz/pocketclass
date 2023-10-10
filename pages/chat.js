@@ -13,6 +13,11 @@ import {
 	updateDoc,
 	Timestamp,
 	arrayUnion,
+	getDocs,
+	query,
+	collection,
+	where,
+	addDoc,
 } from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 // animation
@@ -23,6 +28,7 @@ import AddMedia from "../components/AddMedia";
 import MediaDisplay from "../components/MediaDisplay";
 import { v4 } from "uuid";
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
+import { toast } from "react-toastify";
 
 const Chat = () => {
 	const router = useRouter();
@@ -47,6 +53,10 @@ const Chat = () => {
 	const [newMediaPreview, setNewMediaPreview] = useState(null);
 	const [newMedia, setNewMedia] = useState(null);
 
+	/**
+	 * UTILITY FUNCTIONS
+	 */
+
 	// redirect to main page
 	const goToMainPage = () => router.push("/");
 
@@ -54,13 +64,25 @@ const Chat = () => {
 	const getData = async (xid, xcol) => {
 		const docRef = doc(db, xcol, xid);
 		const data = await getDoc(docRef);
-		return data.data();
+		return data?.data();
 	};
 
 	// check ids
 	useEffect(() => {
-		if (!cid || !chid) goToMainPage();
-	}, [cid, chid]);
+		if (router.isReady && (!cid || !chid)) goToMainPage();
+	}, [cid, chid, router.isReady]);
+
+	// scroll to bottom
+	useEffect(() => {
+		const scrollToBottom = () =>
+			bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+
+		scrollToBottom();
+	}, [messages]);
+
+	/**
+	 * DATA FUNCTIONS
+	 */
 
 	// get all data
 	useEffect(() => {
@@ -87,6 +109,43 @@ const Chat = () => {
 		if (chid) getAllData();
 	}, [chid]);
 
+	/**
+	 * LAST SEEN FUNCTIONS
+	 */
+
+	// mark notification as read
+	const updateLastSeens = async () => {
+		try {
+			const now = Timestamp?.now();
+			const querySnapshot = await getDocs(
+				query(
+					collection(db, "notifications"),
+					where("chatroom", "==", chid),
+					where("user", "==", user?.uid),
+					where("isRead", "==", false)
+				)
+			);
+
+			querySnapshot.forEach(async (docRef) => {
+				await updateDoc(doc(db, "notifications", docRef.id), {
+					createdAt: now,
+					isRead: true,
+				});
+			});
+		} catch (error) {
+			console.warn(error);
+		}
+	};
+
+	// mark as read
+	useEffect(() => {
+		if (!!chid && !!user) updateLastSeens();
+	}, [chid, user]);
+
+	/**
+	 * MESSAGING FUNCTIONS
+	 */
+
 	// realtime message updates
 	useEffect(() => {
 		const getMessages = async () => {
@@ -102,14 +161,6 @@ const Chat = () => {
 		if (chid) getMessages();
 	}, [chid]);
 
-	// scroll to bottom
-	useEffect(() => {
-		const scrollToBottom = () =>
-			bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-
-		scrollToBottom();
-	}, [user, messages]);
-
 	// upload file
 	const uploadFile = async () => {
 		const storage = getStorage();
@@ -119,7 +170,9 @@ const Chat = () => {
 				user?.uid?.split(" ").join("") + newMedia?.name ?? "" + v4()
 			}`
 		);
-		return await uploadBytes(mediaRef, newMedia).then((snapshot) =>
+		return await uploadBytes(mediaRef, newMedia, {
+			contentType: newMedia?.type,
+		}).then((snapshot) =>
 			getDownloadURL(snapshot?.ref).then((downloadURL) => downloadURL)
 		);
 	};
@@ -130,16 +183,16 @@ const Chat = () => {
 			e?.preventDefault?.();
 			if (newMessage?.trim() === "" && !newMedia) return;
 			setIsSending(true);
-
-			// remove previes
 			setNewMediaPreview(null);
+			const chatRoomRef = doc(db, "chatrooms", chid);
+			const now = Timestamp?.now();
 
 			let data = {
 				text: newMessage,
 				sender:
 					user?.uid ||
 					(isInstructor ? instructorData?.userUid : studentData?.userUid),
-				createdAt: Timestamp?.now(),
+				createdAt: now,
 			};
 
 			// upload image
@@ -153,14 +206,104 @@ const Chat = () => {
 			setNewMessage("");
 			setNewMedia(null);
 
-			await updateDoc(doc(db, "chatrooms", chid), {
+			// add message
+			await updateDoc(chatRoomRef, {
+				lastMessage: now,
 				messages: arrayUnion(data),
 			});
-
 			setIsSending(false);
+
+			// update last seen & send notification
+			updateLastSeens();
+			sendNotification();
 		} catch (error) {
 			setIsSending(false);
 			console.warn(error);
+		}
+	};
+
+	/**
+	 * NOTIFICATION/EMAIL FUNCTIONS
+	 */
+
+	// send notification
+	const sendNotification = async () => {
+		try {
+			const now = Timestamp?.now();
+			const tenMinutesAgo = moment(now?.toDate()).subtract(10, "minutes");
+			const twoMinutesAgo = moment(now?.toDate()).subtract(2, "minutes");
+
+			const targetUid = isInstructor
+				? roomData?.student || studentData?.userUid
+				: roomData?.instructor || instructorData?.userUid;
+
+			const targetEmail = isInstructor
+				? studentData?.email
+				: instructorData?.email;
+
+			const targetName = isInstructor
+				? `${instructorData?.firstName} ${instructorData?.lastName}`
+				: `${studentData?.firstName} ${studentData?.lastName}`;
+
+			const targetText = `You have new messages in class '${classData?.Name}' by '${targetName}'.`;
+
+			let data = {
+				isRead: false,
+				user: targetUid,
+				text: targetText,
+				createdAt: now,
+				chatroom: chid,
+			};
+
+			const querySnapshot = await getDocs(
+				query(
+					collection(db, "notifications"),
+					where("chatroom", "==", chid),
+					where("user", "==", targetUid)
+				)
+			);
+
+			if (querySnapshot?.docs?.length > 0) {
+				const notifDoc = querySnapshot?.docs?.[0];
+				const notifDate = moment(notifDoc?.data()?.createdAt?.toDate());
+
+				if (notifDate?.isBefore(twoMinutesAgo)) {
+					await updateDoc(doc(db, "notifications", notifDoc?.id), data);
+				}
+
+				if (notifDate?.isBefore(tenMinutesAgo)) {
+					await sendEmail(targetEmail, targetText, now);
+				}
+			} else {
+				await addDoc(collection(db, "notifications"), data);
+				await sendEmail(targetEmail, targetText, now);
+			}
+		} catch (error) {
+			console.warn(error);
+		}
+	};
+
+	// send email
+	const sendEmail = async (targetEmail, targetText, now) => {
+		try {
+			const res = await fetch("/api/sendEmail", {
+				method: "POST",
+				headers: {
+					Accept: "application/json, text/plain, */*",
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					subject: `Message Alert`,
+					text: `${targetText} \n\nTime:${moment(now?.toDate())?.format?.(
+						"DD-MM-YY / hh:mm A"
+					)}`,
+					to: targetEmail,
+				}),
+			});
+
+			console.log(res);
+		} catch (error) {
+			console.log(error);
 		}
 	};
 
