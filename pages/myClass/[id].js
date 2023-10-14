@@ -77,8 +77,6 @@ const MyClass = () => {
 		router.push("/");
 	}
 
-	console.log(myClass);
-
 	return (
 		<div className="myClassesContainer mx-auto">
 			<Head>

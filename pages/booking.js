@@ -110,7 +110,7 @@ export default function Booking() {
 				color: isBeforeNow(event.end) ? "black" : "white",
 				display: isInstructor || event.owner === uid ? "block" : "none",
 				textAlign: "center",
-				padding: "4px",
+				padding: window.innerWidth > 768 ? "4px" : "1px 4px",
 				cursor: !!event?.availability ? "default" : "pointer",
 				borderRadius: "1000px",
 				fontSize: "13px",
@@ -182,8 +182,8 @@ export default function Booking() {
 					}
 				});
 			} catch (error) {
-				toast.error("Chats observing error !", {
-					toastId: "chatError3",
+				toast.error("Appointments observing error !", {
+					toastId: "appError3",
 				});
 				console.warn(error);
 			}
@@ -191,59 +191,6 @@ export default function Booking() {
 
 		if (isInstructor && !!classId) observeAvailability();
 	}, [isInstructor, classId]);
-
-	// get appointments data on change
-	useEffect(() => {
-		const observeAppointments = async () => {
-			try {
-				onSnapshot(
-					query(collection(db, "appointments")),
-					async (querySnapshot) => {
-						const ch = querySnapshot
-							.docChanges()
-							.find((change) => change?.doc?.data()?.class === classId);
-
-						if (ch) {
-							await getAppointments();
-						}
-					}
-				);
-			} catch (error) {
-				toast.error("Chats observing error !", {
-					toastId: "chatError3",
-				});
-				console.warn(error);
-			}
-		};
-
-		if (isInstructor && !!classId) observeAppointments();
-	}, [isInstructor, classId]);
-
-	// get all data
-	useEffect(() => {
-		const getAllData = async () => {
-			try {
-				setIsLoading(true);
-				const cData = await getData(classId, "classes");
-				const uData = await getData(uid, "Users");
-				setClassData(await cData);
-				setUserData(await uData);
-
-				await getAppointments();
-				await getAvailability();
-
-				setIsLoading(false);
-			} catch (error) {
-				setIsLoading(false);
-				toast.error("Class Data loading error !", {
-					toastId: "classError3",
-				});
-				console.warn(error);
-			}
-		};
-
-		if (!!classId && !!user) getAllData();
-	}, [classId, user]);
 
 	// get appointments data on change
 	useEffect(() => {
@@ -271,6 +218,32 @@ export default function Booking() {
 
 		if (!!classId) observeAppointments();
 	}, [classId]);
+
+	// get all data
+	useEffect(() => {
+		const getAllData = async () => {
+			try {
+				setIsLoading(true);
+				const cData = await getData(classId, "classes");
+				const uData = await getData(uid, "Users");
+				setClassData(await cData);
+				setUserData(await uData);
+
+				await getAppointments();
+				await getAvailability();
+
+				setIsLoading(false);
+			} catch (error) {
+				setIsLoading(false);
+				toast.error("Class Data loading error !", {
+					toastId: "classError3",
+				});
+				console.warn(error);
+			}
+		};
+
+		if (!!classId && !!user) getAllData();
+	}, [classId, user]);
 
 	/**
 	 * APPOINTMENTS FUNCTIONS
@@ -304,26 +277,12 @@ export default function Booking() {
 		setShowAppointmentDetails(true);
 	};
 
-	//
-	//
-	//
-	// console.log("id", classId);
-	// console.log("user", user);
-	// console.log("user data", userData);
-	// console.log("class", classData);
-	// console.log("availability", availability);
-	// console.log("appointments", appointments);
-	// console.log("\n\n-------------------------\n\n");
-	//
-	//
-	//
-
 	return isLoading || !classData || !userData || !classId ? (
 		<section className="flex justify-center items-center min-h-[100vh]">
 			<Image src="/Rolling-1s-200px.svg" width={"60px"} height={"60px"} />
 		</section>
 	) : (
-		<div className="myClassesContainer mx-auto h-screen flex flex-col">
+		<div className="mx-auto min-h-screen flex flex-col">
 			{/* head */}
 			<Head>
 				<title>Booking</title>
@@ -335,7 +294,7 @@ export default function Booking() {
 			<Header />
 
 			{/* booking container */}
-			<div className="bg-white flex-1 flex flex-col p-4 md:p-12">
+			<div className="bg-white flex-1 flex flex-col p-2 md:p-12">
 				<h1 className="capitalize text-logo-red text-2xl md:text-4xl font-medium pb-1">
 					{classData?.Name}
 				</h1>
@@ -361,7 +320,7 @@ export default function Booking() {
 					{!!user && !!isInstructor && (
 						<div className="flex mb-10 rounded-full border border-logo-red w-fit shadow-md">
 							<button
-								className={`w-[170px] md:w-[200px] py-1 rounded-l-full font-medium duration-300 ease-in-out ${
+								className={`w-[140px] md:w-[200px] py-1 rounded-l-full font-medium duration-300 ease-in-out ${
 									!showAvailability
 										? " bg-logo-red text-white"
 										: " bg-slate-100 text-gray-700"
@@ -372,7 +331,7 @@ export default function Booking() {
 							</button>
 
 							<button
-								className={`w-[170px] md:w-[200px] py-1 rounded-r-full font-medium duration-300 ease-in-out ${
+								className={`w-[140px] md:w-[200px] py-1 rounded-r-full font-medium duration-300 ease-in-out ${
 									showAvailability
 										? " bg-logo-red text-white"
 										: " bg-slate-100 text-gray-700"
@@ -385,11 +344,11 @@ export default function Booking() {
 					)}
 
 					<Calendar
-						className="min-h-[500px] md:min-h-[600px] flex-1 w-full"
+						className="min-h-[750px] md:min-h-[600px] flex-1 w-full"
 						localizer={localizer}
 						events={
 							!isInstructor
-								? getDateList(appointments)
+								? getDateList(appointments)?.filter?.((a) => a?.owner === uid)
 								: showAvailability
 								? getFlatList(availability)
 								: getDateList(appointments)
@@ -401,7 +360,7 @@ export default function Booking() {
 						onSelectEvent={handleAppointmentClick}
 						eventPropGetter={eventStyleGetter}
 						dayPropGetter={dayPropGetter}
-						longPressThreshold={1}
+						longPressThreshold={100}
 					/>
 				</div>
 
@@ -411,6 +370,7 @@ export default function Booking() {
 							slotDate={slotDate}
 							closeModal={handleCloseModal}
 							classId={classId}
+							uEmail={userData?.email}
 						/>
 					) : (
 						<AddBooking
@@ -419,8 +379,11 @@ export default function Booking() {
 							appointments={appointments}
 							closeModal={handleCloseModal}
 							uName={uName}
+							uEmail={userData?.email}
 							uid={uid}
 							classId={classId}
+							insId={classData?.classCreator}
+							price={classData?.Price}
 						/>
 					))}
 

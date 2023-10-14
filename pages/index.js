@@ -80,8 +80,6 @@ export default function Home({ exploreData, cardsData }) {
 		return () => window.removeEventListener("resize", handleResize);
 	}, []);
 
-	console.log(isMobile);
-
 	return (
 		<div className="">
 			<Head>
@@ -166,9 +164,8 @@ export default function Home({ exploreData, cardsData }) {
 								price,
 								category,
 							}) => (
-								<SwiperSlide>
+								<SwiperSlide key={id}>
 									<SmallCard
-										key={id}
 										id={id}
 										img={images[0]}
 										type={type}

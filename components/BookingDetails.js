@@ -4,6 +4,8 @@ import React, { useRef } from "react";
 import moment from "moment";
 // hooks
 import useClickOutside from "../hooks/OnClickOutside";
+// utils
+import { isBeforeNow } from "../utils/date";
 
 const Details = ({ appointmentDetails, closeModal, isInstructor }) => {
 	// for closing modal
@@ -22,8 +24,20 @@ const Details = ({ appointmentDetails, closeModal, isInstructor }) => {
 					{isInstructor ? "Appointment Details" : "Your Appointment Details"}
 				</h1>
 
+				<div className="mt-2 text-lg">
+					{isBeforeNow(appointmentDetails.end) ? (
+						<p className="text-sm uppercase tracking-wide font-mono bg-gray-400 text-gray-800 rounded-full text-center">
+							Past
+						</p>
+					) : (
+						<p className="text-sm uppercase tracking-wide font-mono bg-green-400 text-green-800 rounded-full text-center">
+							Upcomming
+						</p>
+					)}
+				</div>
+
 				{isInstructor && (
-					<div className="mt-6 text-lg">
+					<div className="mt-4 text-lg">
 						<p className="font-bold text-logo-red">Student Name</p>
 						<p>{appointmentDetails.title}</p>
 					</div>

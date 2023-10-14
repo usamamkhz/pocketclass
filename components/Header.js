@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import {
 	SearchIcon,
@@ -33,6 +33,17 @@ function Header({ placeholder }) {
 
 	const [user, loading, error] = useAuthState(auth);
 	const [signOut, signOutLoading, signOutError] = useSignOut(auth);
+	const [userData, setUserData] = useState(null);
+
+	useEffect(() => {
+		const getData = async () => {
+			const docRef = doc?.(db, "Users", user?.uid);
+			const data = await getDoc?.(docRef);
+			setUserData(data?.data?.());
+		};
+
+		user && getData();
+	}, [user]);
 
 	const selectionRange = {
 		startDate: startDate,
@@ -77,7 +88,7 @@ function Header({ placeholder }) {
 				setCategory(docSnap.data().category);
 			}
 		} catch (error) {
-			console.log(error);
+			console.warn(error);
 		}
 	};
 
@@ -224,6 +235,16 @@ function Header({ placeholder }) {
 													>
 														Create Class
 													</p>
+												</li>
+											)}
+
+											<li className="my-2  hover:text-logo-red hover:scale-105 transition transform duration-200 ease-out active:scale-90">
+												<a href={`/support`}>Support</a>
+											</li>
+
+											{userData && !!userData?.isAdmin && (
+												<li className="my-2  hover:text-logo-red hover:scale-105 transition transform duration-200 ease-out active:scale-90">
+													<a href={`/dashboard`}>Dashboard</a>
 												</li>
 											)}
 
