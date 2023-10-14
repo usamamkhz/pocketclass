@@ -27,7 +27,7 @@ export default function (req, res) {
 		})
 		.sendMail(message, (err) => {
 			if (err) {
-				console.log(err);
+				console.warn(err);
 				res.status(400).json({ err: err });
 			} else {
 				res.status(200).json("Email Sent");

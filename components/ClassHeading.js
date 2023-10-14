@@ -622,7 +622,7 @@ const ClassHeading = ({
 								</button>
 							) : !authStateLoading && isInterested ? (
 								<button
-									disabled="true"
+									disabled={true}
 									className="disabled:opacity-50 w-[200px] active:duration-75 transition-all hover:scale-[1.01]  ease-in-out transform py-2 bg-logo-red rounded-xl text-white font-semibold text-sm"
 								>
 									<svg
@@ -804,9 +804,9 @@ const ClassHeading = ({
 				reviews.filter((rev) => rev[0].classID === id)?.length !== 0 ? (
 					reviews
 						.filter((rev) => rev[0].classID === id)
-						.map((review) => {
+						.map((review, index) => {
 							return (
-								<div className="reviewShow my-10 flex flex-col">
+								<div key={index} className="reviewShow my-10 flex flex-col">
 									<div className="img flex gap-6 items-center">
 										{review[0]?.photo !== " " ? (
 											<img

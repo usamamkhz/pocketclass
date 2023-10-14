@@ -12,7 +12,29 @@ import useClickOutside from "../hooks/OnClickOutside";
 // utils
 import { generateHourlySlotsForDate } from "../utils/slots";
 
-const AddAvailability = ({ slotDate, closeModal, classId }) => {
+// send email
+const sendEmail = async (targetEmail, targetSubject, targetText, now) => {
+	try {
+		const res = await fetch("/api/sendEmail", {
+			method: "POST",
+			headers: {
+				Accept: "application/json, text/plain, */*",
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				subject: targetSubject,
+				text: `${targetText} \n\nTime:${moment(now?.toDate())?.format?.(
+					"DD-MM-YY / hh:mm A"
+				)}`,
+				to: targetEmail,
+			}),
+		});
+	} catch (error) {
+		console.warn(error);
+	}
+};
+
+const AddAvailability = ({ slotDate, closeModal, classId, uEmail }) => {
 	const [loading, setLoading] = useState(false);
 	// for closing modal
 	const modalRef = useRef();
@@ -65,6 +87,10 @@ const AddAvailability = ({ slotDate, closeModal, classId }) => {
 				toast.success("Availability added !", {
 					toastId: "asSuccess",
 				});
+
+				const targetText = `Your availability was added successfully for ClassId: ${classId}`;
+				sendEmail(uEmail, `Appointment add success`, targetText);
+
 				setLoading(false);
 				closeModal();
 			});

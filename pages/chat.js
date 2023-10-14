@@ -28,7 +28,6 @@ import AddMedia from "../components/AddMedia";
 import MediaDisplay from "../components/MediaDisplay";
 import { v4 } from "uuid";
 import { getDownloadURL, getStorage, ref, uploadBytes } from "firebase/storage";
-import { toast } from "react-toastify";
 
 const Chat = () => {
 	const router = useRouter();
@@ -300,10 +299,8 @@ const Chat = () => {
 					to: targetEmail,
 				}),
 			});
-
-			console.log(res);
 		} catch (error) {
-			console.log(error);
+			console.warn(error);
 		}
 	};
 
