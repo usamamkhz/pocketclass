@@ -649,8 +649,8 @@ const ClassHeading = ({
 						</div>
 
 						{/* chat/schedule button */}
-						{!!user &&
-							(isInstructor ? (
+						{!!user ? (
+							isInstructor ? (
 								<>
 									<button
 										onClick={(e) => handleBooking()}
@@ -712,7 +712,32 @@ const ClassHeading = ({
 										Booking Schedule
 									</button>
 								</div>
-							))}
+							)
+						) : (
+							<div>
+								<button
+									onClick={(e) => {
+										toast.warning("Login to use this feature !", {
+											toastId: "loginError1",
+										});
+									}}
+									className="active:scale-105 w-[200px] active:duration-75 transition-all hover:scale-[1.01] ease-in-out transform py-2 bg-logo-red rounded-xl text-white font-semibold text-sm mt-4"
+								>
+									Chat with Instructor
+								</button>
+
+								<button
+									onClick={(e) => {
+										toast.warning("Login to use this feature !", {
+											toastId: "loginError1",
+										});
+									}}
+									className="active:scale-105 w-[200px] active:duration-75 transition-all hover:scale-[1.01] ease-in-out transform py-2 bg-logo-red rounded-xl text-white font-semibold text-sm mt-4"
+								>
+									Booking Schedule
+								</button>
+							</div>
+						)}
 
 						{/* <div className="icon m-3 flex gap-2">
                             <span>
