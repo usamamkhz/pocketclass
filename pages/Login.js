@@ -52,7 +52,8 @@ function Login() {
 					return setErrorMessage("Please Sign up first!");
 				}
 			} else {
-				if (router.query.redirect) {
+				await shouldRedirectToStripe(googleSignIn.user);
+				 if (router.query.redirect) {
 					router.push(router.query.redirect);
 				} else {
 					router.push("/");
@@ -101,6 +102,9 @@ function Login() {
 				setErrorMessage("Please verify Your email first!");
 				return;
 			}
+			//get user data from firestore
+			const docRef = doc(db, "Users", user.user.uid);
+			shouldRedirectToStripe(user);
 			if (router.query.redirect) {
 				router.push(router.query.redirect);
 			} else {
@@ -109,6 +113,18 @@ function Login() {
 			return;
 		}
 	}, [user, error]);
+	const shouldRedirectToStripe =  async(user) => {
+		const docRef = doc(db, "Users", user.user.uid);
+		const docSnap = await getDoc(docRef);
+		if (docSnap.exists()) {
+			const data = docSnap.data();
+			if (!data.stripeAccountId&&data.category==="instructor") {
+				router.push("/addStripe");
+			}
+		}
+	};
+
+
 
 	if (signOutError) {
 		console.warn(signOutError);
