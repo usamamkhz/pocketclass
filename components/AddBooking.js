@@ -59,38 +59,42 @@ const AddBooking = ({
 	price,
 }) => {
 	const [options, setOptions] = useState(null);
-	useEffect(() => {
-		const getOptions = async () => {
-			try {
-				const checkoutSession = await fetch("/api/create-stripe-session", {
-					method: "POST",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify({
-						uid,
-						uEmail,
-						uName,
-						classId,
-						insId,
-						price,
-					}),
-				});
-				const data = await checkoutSession.json();
-				const result = {
-					clientSecret: data?.clientSecret,
-				};
+	const [voucher, setVoucher] = useState("");
+	const [voucherVerified, setVoucherVerified] = useState(false);
+	const getOptions = async (newPrice=null) => {
+		try {
+			console.log(price);
+			console.log(newAppointment.price);
+			const checkoutSession = await fetch("/api/create-stripe-session", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					uid,
+					uEmail,
+					uName,
+					classId,
+					insId,
+					price:newPrice??price,
+				}),
+			});
+			const data = await checkoutSession.json();
+			const result = {
+				clientSecret: data?.clientSecret,
+			};
 
-				setOptions(result);
-			} catch (error) {
-				console.warn(error);
-				toast.error("Payments error !" + error?.message || "", {
-					toastId: "apError2",
-				});
-			} finally {
-				setLoading(false);
-			}
-		};
+			setOptions(result);
+		} catch (error) {
+			console.warn(error);
+			toast.error("Payments error !" + error?.message || "", {
+				toastId: "apError2",
+			});
+		} finally {
+			setLoading(false);
+		}
+	};
+	useEffect(() => {
 
 		getOptions();
 	}, []);
@@ -127,9 +131,11 @@ const AddBooking = ({
 		start: null,
 		end: null,
 		price: price,
+		paid: false,
 	};
 	const [newAppointment, setNewAppointment] = useState(initialState);
 	const [confirm, setConfirm] = useState(false);
+	const [error, setError] = useState(null);
 
 	const handleTime = (start, end) => {
 		setNewAppointment({ ...newAppointment, start: start, end: end });
@@ -161,7 +167,46 @@ const AddBooking = ({
 			});
 		}
 	};
-
+	const handleVoucher = async () => {
+		try {
+			const response = await fetch("/api/verifyVoucher", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ code: voucher}),
+			});
+			const data = await response.json();
+			console.log(data);
+			if (data?.verified) {
+				setVoucherVerified(true);
+				let discountType = data?.discountType;
+				let discountedPrice
+				if(discountType==='percentage'){
+				 discountedPrice = price - (price * data?.discount) / 100;
+				}
+				else{
+					discountedPrice = price - data?.discount;
+				}
+				if(discountedPrice<0){
+					discountedPrice=1;
+				}
+				setNewAppointment({ ...newAppointment, price:discountedPrice });
+				getOptions(discountedPrice);
+				toast.success("Voucher verified !");
+			} 
+			if(data?.message){
+				console.log(data?.message);
+				toast.error(data?.message);
+				setError(data?.message);
+			}
+		} catch (error) {
+			console.error(error);
+			toast.error("Voucher verification error !", {
+				toastId: "vError2",
+			});
+		}
+	}
 	return (
 		<div
 			className={`fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50 transition-opacity duration-300`}
@@ -187,7 +232,7 @@ const AddBooking = ({
 								onSuccess={handleAddAppointment}
 								closeModal={closeModal}
 								uEmail={uEmail}
-								price={price}
+								price={newAppointment.price??price}
 							/>
 						</Elements>
 					) : (
@@ -238,13 +283,42 @@ const AddBooking = ({
 											})}
 										</div>
 									</div>
+									{/* Voucer Code  */}
+									{!voucherVerified&&<div className="flex flex-col mt-6">
+										<label htmlFor="voucher" className="font-bold text-center">
+											Voucher Code
+										</label>
+										<input
+											type="text"
+											name="voucher"
+											id="voucher"
+											placeholder="Enter your voucher code"
+											className="bg-gray-100 border !border-gray-100 rounded-md shadow-md mt-2 px-4 py-2 focus:!outline-none"
+											value={voucher}
+											onChange={(e) => { if(e.target.value===''){setError(null)}setVoucher(e.target.value)}}
+										/>
+										<span className="text-xs text-gray-400 mt-2">*If you have any voucher code, apply here</span>
+										<button className="mx-auto bg-logo-red text-white py-2 px-8 rounded-lg mt-2 w-1/3" onClick={handleVoucher} >
+											Apply
+										</button>
+										{error && <div className="text-red-500 text-center">
+											{error
+											}
+											</div>}
+											
+									</div>}
+											{
+												voucherVerified&&<div className="text-green-500 text-center">
+													Voucher Verified
+												</div>
+											}
 
 									{/* add btn */}
 									<div className="mt-6 mx-auto">
 										<button
 											onClick={() => setConfirm(true)}
 											className="bg-logo-red text-white py-2 px-8 rounded-lg opacity-80 hover:opacity-100 duration-150 ease-in-out disabled:grayscale-[50%] disabled:!opacity-80"
-											disabled={!newAppointment.start || !newAppointment.end}
+											disabled={!newAppointment.start || !newAppointment.end||(voucher.length>0&&!voucherVerified)}
 										>
 											Confirm Appointment
 										</button>
